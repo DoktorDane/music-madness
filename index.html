@@ -1,0 +1,818 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Doktor's Lab — Music Madness</title>
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#141a26; --panel-2:#1b2231; --line:#2a3344;
+    --text:#e9eef7; --muted:#8492ab; --cyan:#22e3d8; --magenta:#ff3d8b; --gold:#ffc24b;
+    --gap:26px; --slot-h:42px; --rhead:30px; --rgap:26px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(1100px 600px at 50% -8%, rgba(255,194,75,.08), transparent 60%),
+      radial-gradient(900px 500px at 6% 110%, rgba(34,227,216,.10), transparent 55%),
+      radial-gradient(900px 500px at 94% 110%, rgba(255,61,139,.10), transparent 55%),
+      var(--bg);
+    color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;min-height:100vh;
+  }
+  .wrap{max-width:100%;padding:22px clamp(12px,2.5vw,30px) 60px}
+
+  header{display:flex;flex-wrap:wrap;gap:16px;align-items:center;justify-content:space-between;
+    padding-bottom:16px;border-bottom:1px solid var(--line);margin-bottom:20px}
+  .brand{display:flex;align-items:center;gap:14px;min-width:260px;flex:1}
+  .eq{display:flex;align-items:flex-end;gap:3px;height:34px;width:34px;flex:none}
+  .eq span{width:5px;background:linear-gradient(var(--cyan),var(--magenta));border-radius:2px;animation:bounce 1s ease-in-out infinite}
+  .eq span:nth-child(1){height:40%} .eq span:nth-child(2){height:90%;animation-delay:.18s}
+  .eq span:nth-child(3){height:60%;animation-delay:.36s} .eq span:nth-child(4){height:100%;animation-delay:.12s}
+  @keyframes bounce{0%,100%{transform:scaleY(.45)}50%{transform:scaleY(1)}}
+  .titles{min-width:0}
+  .kicker{font:600 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.3em;text-transform:uppercase;color:var(--cyan);margin-bottom:8px}
+  #title{background:transparent;border:none;outline:none;color:var(--text);font-weight:800;
+    font-size:clamp(22px,3.4vw,34px);letter-spacing:-.02em;width:100%;min-width:0;padding:0}
+  #title::placeholder{color:#4f5b72}
+  #title:focus{box-shadow:0 2px 0 var(--magenta)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  select,button{font-family:inherit;font-size:13px;font-weight:600;color:var(--text);
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:9px 13px;cursor:pointer;
+    transition:.15s border-color,.15s background,.15s transform}
+  button:hover,select:hover{border-color:var(--cyan)}
+  button:active{transform:translateY(1px)}
+  button.ghost{background:transparent}
+  button.danger:hover{border-color:var(--magenta);color:#ffd1e3}
+  .seg{display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:4px 6px 4px 11px}
+  .seg label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .seg select{border:none;background:transparent;padding:5px 4px}
+  .ctrl-div{width:1px;height:24px;background:var(--line);margin:0 2px}
+  #imgBtn{border-color:color-mix(in srgb, var(--cyan) 55%, var(--line));color:var(--cyan);background:color-mix(in srgb, var(--cyan) 14%, transparent);font-weight:700}
+  #imgBtn:hover{border-color:var(--cyan);background:color-mix(in srgb, var(--cyan) 22%, transparent)}
+  #exportBtn{border-color:color-mix(in srgb, var(--cyan) 45%, var(--line));color:var(--cyan);
+    background:color-mix(in srgb, var(--cyan) 12%, transparent)}
+  #exportBtn:hover{border-color:var(--cyan);background:color-mix(in srgb, var(--cyan) 20%, transparent)}
+
+  .stage{overflow-x:auto;overflow-y:hidden;padding:6px 4px 18px;-webkit-overflow-scrolling:touch}
+  .bracket{display:flex;column-gap:var(--gap);width:max-content;margin:0 auto;align-items:stretch}
+  .bracket.compact{--gap:20px;--slot-h:31px;--rhead:28px;--rgap:24px}
+  .bracket.no-head{--rhead:0px;--rgap:0px}
+  .round{position:relative;display:flex;flex-direction:column;min-width:166px}
+  .compact .round{min-width:150px}
+  .round.final-col{min-width:172px}
+  .round.champ-col{min-width:208px}
+  .round-label{height:30px;display:flex;align-items:center;gap:8px;justify-content:center;
+    font:600 10.5px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:8px;white-space:nowrap}
+  .round-label .dot{width:6px;height:6px;border-radius:50%;background:var(--cyan);flex:none}
+  .final-col .round-label{color:#c6d2e6}
+  .champ-col .round-label{color:var(--gold)} .champ-col .round-label .dot{background:var(--gold)}
+
+  .matches{position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
+  .matches.region-split{gap:var(--rgap)}
+  .region-group{flex:1;display:flex;flex-direction:column;min-height:0}
+  .region-body{flex:1;display:flex;flex-direction:column;min-height:0}
+  .region-head{height:var(--rhead);flex:none;display:flex;align-items:center;justify-content:center;padding:0 4px}
+
+  /* per-region color zones */
+  .region-zone{border-radius:13px;background:color-mix(in srgb, var(--accent) 5%, transparent);
+    box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--accent) 15%, transparent)}
+  .region-zone .slot{background:color-mix(in srgb, var(--accent) 9%, var(--panel));
+    border-color:color-mix(in srgb, var(--accent) 26%, var(--line))}
+  .region-zone .slot .seed{color:var(--accent)}
+
+  .genre-input{width:100%;max-width:152px;height:25px;text-align:center;outline:none;
+    color:var(--accent,var(--cyan));border:1px solid color-mix(in srgb, var(--accent,var(--cyan)) 42%, var(--line));
+    background:color-mix(in srgb, var(--accent,var(--cyan)) 12%, transparent);border-radius:7px;
+    font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase}
+  .genre-input::placeholder{color:color-mix(in srgb, var(--accent,var(--cyan)) 55%, var(--muted));letter-spacing:.1em}
+  .genre-input:focus{border-color:var(--accent,var(--cyan));background:color-mix(in srgb, var(--accent,var(--cyan)) 20%, transparent)}
+  .genre-label{display:flex;align-items:center;justify-content:center;width:100%;max-width:152px;height:25px;border-radius:7px;
+    color:var(--accent,var(--cyan));border:1px solid color-mix(in srgb, var(--accent,var(--cyan)) 42%, var(--line));
+    background:color-mix(in srgb, var(--accent,var(--cyan)) 12%, transparent);
+    font:800 11px/1 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.14em;text-transform:uppercase;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 8px}
+  #submitBtn{border-color:color-mix(in srgb, var(--cyan) 45%, var(--line));color:var(--cyan);background:color-mix(in srgb, var(--cyan) 12%, transparent)}
+  #submitBtn:hover:not(:disabled){border-color:var(--cyan);background:color-mix(in srgb, var(--cyan) 20%, transparent)}
+  #submitBtn:disabled{opacity:.4;cursor:not-allowed}
+
+  .track-panel{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 clamp(12px,2.5vw,30px) 16px;padding:11px 15px;
+    border:1px solid color-mix(in srgb,var(--cyan) 30%,var(--line));border-radius:12px;
+    background:color-mix(in srgb,var(--cyan) 6%,var(--panel));font-size:13.5px;color:var(--text)}
+  .track-panel .trk-dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 4px color-mix(in srgb,var(--cyan) 20%,transparent);flex:none}
+  .track-panel #trkScore b{color:var(--cyan)}
+  .track-panel #trkStatus{color:var(--muted);font:600 11px/1 ui-monospace,monospace;letter-spacing:.05em}
+  .track-panel #trkRefresh{margin-left:auto;padding:6px 11px;font-size:12px}
+  .slot.trk-hit{border-color:#3ad07a;background:linear-gradient(90deg,rgba(58,208,122,.16),rgba(58,208,122,.05));box-shadow:0 0 0 1px rgba(58,208,122,.28)}
+  .slot.trk-hit .name{color:#c9f7dc}
+  .slot.trk-hit .seed{color:#3ad07a}
+  .slot.trk-bust{opacity:.55;border-color:color-mix(in srgb,var(--magenta) 45%,var(--line))}
+  .slot.trk-bust .name{text-decoration:line-through;text-decoration-color:var(--magenta);color:#d69}
+  .slot.trk-out{opacity:.38}
+  .slot.trk-out .name{text-decoration:line-through;text-decoration-color:var(--muted)}
+
+  .match{position:relative;flex:1 1 0;min-height:calc(var(--slot-h)*2 + 22px);
+    display:flex;flex-direction:column;justify-content:center;gap:7px}
+  .compact .match{min-height:calc(var(--slot-h)*2 + 13px)}
+
+  .match.conn-l::before{content:"";position:absolute;left:calc(-1*var(--gap));top:25%;height:50%;width:2px;background:var(--line)}
+  .match.conn-l::after{content:"";position:absolute;left:calc(-1*var(--gap));top:50%;transform:translateY(-1px);width:var(--gap);height:2px;background:var(--line)}
+  .match.conn-r::before{content:"";position:absolute;right:calc(-1*var(--gap));top:25%;height:50%;width:2px;background:var(--line)}
+  .match.conn-r::after{content:"";position:absolute;right:calc(-1*var(--gap));top:50%;transform:translateY(-1px);width:var(--gap);height:2px;background:var(--line)}
+  .match.single::before{display:none}
+  .match.conn-mid::before{content:"";position:absolute;left:calc(-1*var(--gap));top:50%;transform:translateY(-1px);width:var(--gap);height:2px;background:var(--line)}
+  .match.conn-mid::after{content:"";position:absolute;right:calc(-1*var(--gap));top:50%;transform:translateY(-1px);width:var(--gap);height:2px;background:var(--line)}
+
+  .slot{position:relative;display:flex;align-items:center;gap:7px;height:var(--slot-h);
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 7px 0 9px;
+    transition:.15s border-color,.15s background,.15s box-shadow}
+  .slot .seed{font:700 10px/1 ui-monospace,monospace;color:var(--muted);min-width:16px;flex:none;text-align:center}
+  .compact .slot .seed{font-size:9px;min-width:14px}
+  .slot input{flex:1;min-width:0;background:transparent;border:none;outline:none;color:var(--text);font-size:13.5px;font-weight:600;padding:0}
+  .compact .slot input,.compact .slot .name{font-size:12px}
+  .slot input::placeholder{color:#52607a;font-weight:500}
+  .slot .name{flex:1;min-width:0;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .slot .name.empty{color:#3f4a60;font-weight:500;font-style:italic}
+  .pick{flex:none;width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--panel-2);
+    color:var(--muted);font-size:11px;padding:0;display:grid;place-items:center;transition:.15s all}
+  .compact .pick{width:22px;height:22px;font-size:10px}
+  .pick:hover:not(:disabled){border-color:var(--cyan);color:var(--cyan);background:rgba(34,227,216,.08)}
+  .pick:disabled{opacity:.28;cursor:not-allowed}
+  .slot:hover{border-color:#3a465c}
+  /* winner highlight overrides region tint */
+  .slot.winner{border-color:var(--cyan);background:linear-gradient(90deg,rgba(34,227,216,.16),rgba(34,227,216,.05));
+    box-shadow:0 0 0 1px rgba(34,227,216,.25),0 6px 22px -12px rgba(34,227,216,.6)}
+  .slot.winner .pick{border-color:var(--cyan);color:#06120f;background:var(--cyan)}
+  .slot.winner .seed{color:var(--cyan)}
+  .slot.loser{opacity:.4}
+  .slot.loser .name{text-decoration:line-through;text-decoration-color:var(--magenta)}
+
+  .champ-slot{height:auto;min-height:112px;flex-direction:column;justify-content:center;gap:6px;text-align:center;
+    border-radius:14px;border:1px solid #3a3320;
+    background:radial-gradient(120% 120% at 50% 0%,rgba(255,194,75,.16),rgba(20,26,38,.6));padding:18px 14px}
+  .champ-slot .crown{font-size:24px;line-height:1}
+  .champ-slot .name{font-size:18px;font-weight:800;white-space:normal;letter-spacing:-.01em}
+  .champ-slot .tag{font:600 10px/1 ui-monospace,monospace;letter-spacing:.26em;text-transform:uppercase;color:var(--gold)}
+  .champ-slot.filled{border-color:var(--gold);box-shadow:0 0 0 1px rgba(255,194,75,.35),0 14px 50px -16px rgba(255,194,75,.55);animation:champpulse 2.6s ease-in-out infinite}
+  @keyframes champpulse{0%,100%{box-shadow:0 0 0 1px rgba(255,194,75,.35),0 14px 50px -16px rgba(255,194,75,.45)}50%{box-shadow:0 0 0 1px rgba(255,194,75,.6),0 14px 60px -10px rgba(255,194,75,.75)}}
+
+  footer{margin-top:24px;color:var(--muted);font-size:12.5px;display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center}
+  footer .hint{display:flex;align-items:center;gap:7px}
+  kbd{font:600 11px/1 ui-monospace,monospace;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:3px 6px;color:var(--text)}
+  .saved{margin-left:auto;font:600 11px/1 ui-monospace,monospace;letter-spacing:.1em;color:var(--cyan);opacity:0;transition:opacity .3s}
+  .saved.show{opacity:1}
+  @media (prefers-reduced-motion:reduce){.eq span,.champ-slot.filled{animation:none}}
+</style>
+
+</head><body><div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="eq"><span></span><span></span><span></span><span></span></div>
+      <div class="titles">
+        <div class="kicker">The Doktor's Lab · Music Madness</div>
+        <input id="title" placeholder="Music Madness Tournament" maxlength="60">
+      </div>
+    </div>
+    <div class="controls">
+      <div class="seg">
+        <label for="size">Field</label>
+        <select id="size">
+          <option value="16">16 · 1 region</option>
+          <option value="32">32 · 2 regions</option>
+          <option value="64" selected="">64 · 4 regions</option>
+        </select>
+      </div>
+      <button class="ghost" id="shuffle" title="Randomize the song placements">⤨ Shuffle seeds</button>
+      <button class="ghost" id="resetPicks" title="Clear winners, keep song names">↺ Reset picks</button>
+      <button class="ghost danger" id="clearAll" title="Erase everything">⌫ Clear all</button>
+      <span class="ctrl-div"></span>
+      <button id="imgBtn" title="Save the whole bracket as an image to post in Discord">📷 Save image</button>
+      <button id="exportBtn" title="Download this bracket to a file you can reload later or on another machine">⤓ Export</button>
+      <button class="ghost" id="importBtn" title="Load a bracket from a file">⤒ Import</button>
+      <button class="ghost" id="entryBtn" title="Generate a locked pick-sheet to send to viewers">📋 Entry sheet</button>
+      <button class="ghost" id="resultsBtn" title="Copy a results code to paste into your live-results file each round">📡 Copy results</button>
+      <input type="file" id="importFile" accept="application/json,.json" style="display:none">
+    </div>
+  </header>
+
+  <div class="stage">
+    <div class="bracket" id="bracket"></div>
+  </div>
+
+  <footer>
+    <div class="hint">Rename a region anytime up top, drop 16 songs into seeds <kbd>1</kbd>–<kbd>16</kbd>, then hit <kbd>▶</kbd>.</div>
+    <div class="hint">Each region crowns a champ → Final Four → title game in the center.</div>
+    <div class="hint">Running this offline for a multi-night event? <kbd>Export</kbd> after each night, <kbd>Import</kbd> to pick up where you left off.</div>
+    <div class="saved" id="saved">✓ Saved</div>
+  </footer>
+</div>
+
+<script>window.__MM_ENTRY__={"title":"","size":64,"regions":["CLUB OZONE","HIGH ENERGY","BANGERS","Pure vibes"],"songs":["SUMMER OF 69","STRAIGHT UP","WITHOUT ME","1999","EMPIRE STATE OF MIND","NOT LIKE US","OH CAROLINA","DREAMS","LUV ME LUV ME","FAST CAR","ACTION","LIL BOO THANG","OH PRETTY WOMAN","ABSOLUTELY (STORY OF A GIRL)","AROUND THE WAY GIRL","SWEET HOME ALABAMA","GET UP ","ESCAPADE","HOLLA IF YA HEAR ME","A THOUSAND MILES","KISS ME","TWICE MY AGE","NOTHIN BUT A GOOD TIME","CONDUCTIN THANGS","STACEYS MOM","GET LOW","RIGHT HERE WAITING","MOOD","SMELLS LIKE TEEN SPIRIT","I RHYME THE WORLD IN 80 DAYS","IT WASNT ME","AFRICA","BLOW YA MIND","ALL OUT OF LOVE","MURDER SHE WROTE","NOKIA","FAT JUICY AND WET","POISON","LIVIN ON A PRAYER","CALIFORNIA LOVE","3 AM ETERNAL","PAINT THE TOWN RED","IT FEELS GOOD","NUMBA 1 (THE TIDE IS HIGH)","ANGEL IS A CENTERFOLD","RUM N REDBULL","JOY AND PAIN","MONY MONY","ZOMBIE","CALM DOWN","GOOD VIBRATIONS","BOOM BOOM (WE LIKE TO PARTY)","MORE THAN WORDS","WIFEY","BOOM SHAKE THE ROOM","IN DA CLUB","LOST IN LOVE","PARADISE CITY","NOW THAT WE FOUND LOVE","BUST A MOVE","JACK AND DIANE","WHATS MY NAME","MY GIRL (GONE GONE GONE)","HERE COMES THE HOTSTEPPER"],"webhook":"https://discordapp.com/api/webhooks/1520592001484197989/Hr4dD1tQauyGIeLjlyA2Ex0u2WDLT5TofVY28bzLv9SZofkEofAcuT-ptCZa-WtTBSLp","resultsUrl":"results.txt"};</script>
+<script>
+const SIZES=[16,32,64];
+const MERGE_ROUND=4; // log2(16): after 4 in-region rounds, regions merge into the Final Four
+const SEED_ORDER=[1,16,8,9,5,12,4,13,6,11,3,14,7,10,2,15];
+const REGION_COLORS=["#5ef08a","#4d9fff","#ff5d8f","#b483ff"]; // Lab / Ozone / Ward / Pharmacy
+const DEFAULT_REGIONS=["Main Stage","The Booth","Dance Floor","Afterhours"];
+const PRIOR_DEFAULTS=[["The Lab","Club Ozone","The Ward","The Pharmacy"]];
+
+let state={title:"",size:64,regions:DEFAULT_REGIONS.slice(),rounds:[]};
+
+const $bracket=document.getElementById('bracket');
+const $title=document.getElementById('title');
+const $size=document.getElementById('size');
+const $saved=document.getElementById('saved');
+
+/* capture a pristine copy of this page so the host can generate locked "entry sheets" */
+const SELF_SOURCE='<!doctype html>\n'+document.documentElement.outerHTML;
+const ENTRY=!!(window.__MM_ENTRY__);
+
+const colsFor=s=>Math.log2(s)+1;
+const slotsInCol=(s,c)=>s/(2**c);
+
+function labelForFull(S){
+  const big=state.size>=64;
+  if(S===64) return 'Round of 64';
+  if(S===32) return 'Round of 32';
+  if(S===16) return big?'Sweet 16':'Round of 16';
+  if(S===8)  return big?'Elite Eight':'Quarterfinals';
+  if(S===4)  return big?'Final Four':'Semifinals';
+  return 'Round of '+S;
+}
+
+/* ---- state shape ---- */
+function normalize(){
+  if(!SIZES.includes(state.size)) state.size=64;
+  if(!Array.isArray(state.regions)) state.regions=DEFAULT_REGIONS.slice();
+  while(state.regions.length<4) state.regions.push("");
+  const cols=colsFor(state.size);
+  if(!Array.isArray(state.rounds)) state.rounds=[];
+  for(let c=0;c<cols;c++){
+    const len=slotsInCol(state.size,c);
+    const prev=Array.isArray(state.rounds[c])?state.rounds[c]:[];
+    const arr=Array(len).fill("");
+    for(let k=0;k<Math.min(len,prev.length);k++) arr[k]=typeof prev[k]==='string'?prev[k]:"";
+    state.rounds[c]=arr;
+  }
+  state.rounds.length=cols;
+}
+
+/* ---- persistence ---- */
+let saveTimer=null;
+async function save(){ if(ENTRY) return; try{ await window.storage.set('song_bracket_v3',JSON.stringify(state),false); flashSaved(); }catch(e){} }
+function debouncedSave(){ clearTimeout(saveTimer); saveTimer=setTimeout(save,400); }
+function flashSaved(msg){ $saved.textContent=msg||'✓ Saved'; $saved.classList.add('show'); clearTimeout(flashSaved._t); flashSaved._t=setTimeout(()=>$saved.classList.remove('show'),1400); }
+async function load(){ try{ const r=await window.storage.get('song_bracket_v3',false); if(r&&r.value){ const p=JSON.parse(r.value); if(p&&typeof p==='object') state=Object.assign(state,p);} }catch(e){} }
+
+/* ---- export / import (file-based, works offline) ---- */
+function slug(s){ return (s||'music-madness').trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'')||'music-madness'; }
+function download(content,filename,type){
+  const blob=new Blob([content],{type:type||'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function b64enc(str){ try{ return btoa(unescape(encodeURIComponent(str))); }catch(e){ return ''; } }
+function escapeXml(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* ---- save the whole bracket as one PNG to post in Discord ---- */
+function exportImage(){
+  try{
+    const src=$bracket;
+    const w=Math.ceil(src.scrollWidth), h=Math.ceil(src.scrollHeight);
+    const pad=28, headerH=66;
+    const W=w+pad*2, H=h+pad*2+headerH;
+
+    const clone=src.cloneNode(true);
+    clone.querySelectorAll('.pick').forEach(b=>b.remove());
+    clone.querySelectorAll('.genre-input').forEach(i=>{ const d=document.createElement('div'); d.className='genre-label'; d.textContent=i.value||i.placeholder||'Region'; i.replaceWith(d); });
+    clone.querySelectorAll('input').forEach(i=>{ const v=i.value; const d=document.createElement('div'); d.className='name'+(v?'':' empty'); d.textContent=v||'—'; i.replaceWith(d); });
+
+    const css=Array.from(document.querySelectorAll('style')).map(s=>s.textContent).join('\n');
+    const inner=new XMLSerializer().serializeToString(clone);
+    const title=escapeXml(state.title||'Music Madness Tournament');
+    const body=
+      '<div xmlns="http://www.w3.org/1999/xhtml" style="width:'+W+'px;background:#0b0e14;padding:'+pad+'px;'+
+        'font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial,sans-serif">'+
+        '<div style="font:600 11px/1 ui-monospace,monospace;letter-spacing:.3em;text-transform:uppercase;color:#22e3d8;margin-bottom:7px">THE DOKTOR\u2019S LAB \u00b7 MUSIC MADNESS</div>'+
+        '<div style="font-weight:800;font-size:24px;color:#e9eef7;letter-spacing:-.02em;margin-bottom:18px">'+title+'</div>'+
+        inner+
+      '</div>';
+    const svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'">'+
+      '<foreignObject x="0" y="0" width="'+W+'" height="'+H+'"><style><![CDATA['+css+']]></style>'+body+'</foreignObject></svg>';
+
+    const url=URL.createObjectURL(new Blob([svg],{type:'image/svg+xml;charset=utf-8'}));
+    const img=new Image();
+    img.onload=()=>{
+      const scale=state.size>=64?1.3:2;
+      const c=document.createElement('canvas');
+      c.width=Math.ceil(W*scale); c.height=Math.ceil(H*scale);
+      const ctx=c.getContext('2d');
+      ctx.fillStyle='#0b0e14'; ctx.fillRect(0,0,c.width,c.height);
+      ctx.setTransform(scale,0,0,scale,0,0);
+      try{ ctx.drawImage(img,0,0); }catch(e){ URL.revokeObjectURL(url); return imgFail(); }
+      URL.revokeObjectURL(url);
+      c.toBlob(blob=>{
+        if(!blob) return imgFail();
+        const u=URL.createObjectURL(blob); const a=document.createElement('a');
+        a.href=u; a.download=slug(state.title)+'-bracket.png';
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),1000);
+        flashSaved('📷 Image saved — drag it into Discord');
+      },'image/png');
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); imgFail(); };
+    img.src=url;
+  }catch(e){ imgFail(); }
+}
+function imgFail(){ alert("Couldn't build the image in this browser.\n\nEasy fallback: press Win+Shift+S, drag a box around the bracket, then paste it into Discord with Ctrl+V.\n(Zoom out with Ctrl+- first so the whole bracket fits.)"); }
+let hostWebhook="";
+/* compact bracket code: 1 bit per game (which side advanced) — tiny, fits a Discord message */
+function encodePicks(rounds){
+  const bits=[];
+  for(let r=1;r<rounds.length;r++) for(let j=0;j<rounds[r].length;j++){
+    const b=rounds[r-1][2*j+1], w=rounds[r][j];
+    bits.push(w===b ? 1 : 0);
+  }
+  let bytes='';
+  for(let i=0;i<bits.length;i+=8){ let by=0; for(let k=0;k<8;k++) if(bits[i+k]) by|=(1<<(7-k)); bytes+=String.fromCharCode(by); }
+  return btoa(bytes);
+}
+
+/* ---- live results feed: 2 bits per game (decided? + which side) ---- */
+let hostResultsUrl="";
+let actualRounds=null, lastUpdated=null, ENTRY_ACTUAL=null, ENTRY_ELIM=null, pollTimer=null;
+function encodeResults(rounds){
+  const bits=[];
+  for(let r=1;r<rounds.length;r++) for(let j=0;j<rounds[r].length;j++){
+    const w=rounds[r][j], dec=w?1:0;
+    const side=(dec && w===rounds[r-1][2*j+1] && w!==rounds[r-1][2*j])?1:0;
+    bits.push(dec,side);
+  }
+  let bytes=''; for(let i=0;i<bits.length;i+=8){ let by=0; for(let k=0;k<8;k++) if(bits[i+k]) by|=(1<<(7-k)); bytes+=String.fromCharCode(by); }
+  return btoa(bytes);
+}
+function decodeResults(token, field){
+  let bytes; try{ bytes=atob(token); }catch(e){ return null; }
+  const bits=[]; for(let i=0;i<bytes.length;i++){ const c=bytes.charCodeAt(i); for(let k=7;k>=0;k--) bits.push((c>>k)&1); }
+  const size=field.length, cols=colsFor(size), rounds=[field.slice()];
+  let bi=0;
+  for(let r=1;r<cols;r++){
+    const len=size/(2**r), row=[];
+    for(let j=0;j<len;j++){ const dec=bits[bi++]||0,side=bits[bi++]||0; const a=rounds[r-1][2*j],b=rounds[r-1][2*j+1]; row.push(dec?(side?b:a):""); }
+    rounds.push(row);
+  }
+  return rounds;
+}
+function computeElim(actual){
+  const elim=new Set();
+  for(let r=1;r<actual.length;r++) for(let j=0;j<actual[r].length;j++){
+    const w=actual[r][j]; if(!w) continue;
+    const a=actual[r-1][2*j], b=actual[r-1][2*j+1], loser=(w===a)?b:a;
+    if(loser) elim.add(loser);
+  }
+  return elim;
+}
+function copyResults(){
+  const code='results:'+encodeResults(state.rounds);
+  const done=()=>flashSaved('📡 Results code copied');
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(()=>prompt('Results code — paste it into your results file:',code));
+  else prompt('Results code — paste it into your results file:',code);
+}
+
+/* ---- entry mode: poll the results feed and light up brackets ---- */
+async function pollResults(){
+  const url=(window.__MM_ENTRY__||{}).resultsUrl;
+  if(!url) return;
+  try{
+    const u=url+(url.includes('?')?'&':'?')+'t='+Date.now();
+    const res=await fetch(u,{cache:'no-store'});
+    if(!res.ok) throw 0;
+    const txt=await res.text();
+    const mm=txt.match(/results:\s*([A-Za-z0-9+/=_-]+)/) || txt.match(/([A-Za-z0-9+/=_-]{4,})/);
+    const token=mm?(mm[1]||mm[0]):'';
+    const dec=token?decodeResults(token, state.rounds[0]):null;
+    if(dec){ actualRounds=dec; lastUpdated=new Date(); render(); }
+    else trackStatus('No results yet');
+  }catch(e){ trackStatus("Couldn't load results"); }
+}
+function trackStatus(msg){ const st=document.getElementById('trkStatus'); if(st) st.textContent=msg; }
+function updateTrackingPanel(){
+  const sc=document.getElementById('trkScore'); if(!sc) return;
+  if(!ENTRY_ACTUAL){ sc.textContent='Waiting for the first results…'; return; }
+  const cols=colsFor(state.size); let pts=0, correct=0;
+  for(let r=1;r<cols;r++){ const val=2**(r-1); for(let i=0;i<ENTRY_ACTUAL[r].length;i++){ const a=ENTRY_ACTUAL[r][i]; if(!a) continue; if(state.rounds[r][i]===a){ pts+=val; correct++; } } }
+  const champPick=state.rounds[cols-1][0]||'';
+  const actualChamp=ENTRY_ACTUAL[cols-1][0];
+  let cs = !champPick ? '—' : actualChamp ? (champPick===actualChamp?'🏆 WON':'✗ eliminated') : (ENTRY_ELIM.has(champPick)?'✗ eliminated':'still alive');
+  sc.innerHTML='<b>'+pts+' pts</b> · '+correct+' correct picks · Your champion '+escapeXml(champPick||'—')+': <b>'+cs+'</b>';
+  const st=document.getElementById('trkStatus'); if(st&&lastUpdated) st.textContent='updated '+lastUpdated.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'});
+}
+
+function exportBracket(){
+  try{
+    download(JSON.stringify(state,null,2), slug(state.title)+'-bracket.json', 'application/json');
+    flashSaved('⤓ Exported');
+  }catch(e){ alert('Export failed — try again.'); }
+}
+function importBracket(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    let p;
+    try{ p=JSON.parse(e.target.result); }catch(err){ alert("That file isn't valid — couldn't read it."); return; }
+    if(!p||typeof p!=='object'||!SIZES.includes(p.size)||!Array.isArray(p.rounds)){ alert("That doesn't look like a Music Madness bracket file."); return; }
+    state=Object.assign({title:"",size:64,regions:DEFAULT_REGIONS.slice(),rounds:[]},p);
+    normalize();
+    $title.value=state.title||"";
+    $size.value=String(state.size);
+    save(); render();
+    flashSaved('⤒ Imported');
+  };
+  reader.readAsText(file);
+}
+
+/* ---- host: generate a locked entry sheet to send to pickers ---- */
+function generateEntrySheet(){
+  const songs=state.rounds[0]||[];
+  const filled=songs.filter(s=>s&&s.trim()).length;
+  if(filled<songs.length && !confirm('Only '+filled+' of '+songs.length+' songs are filled in. Generate the entry sheet anyway? Blank slots will show empty for pickers.')) return;
+
+  let wh=prompt(
+    "Paste your Discord webhook URL so entries auto-post to #bracket-challenge.\n\n"+
+    "In Discord: open the channel → Edit Channel → Integrations → Webhooks → New Webhook → Copy Webhook URL.\n\n"+
+    "Leave this blank to make a copy-and-paste sheet instead.",
+    hostWebhook||'');
+  if(wh===null) return;                 // cancelled
+  wh=wh.trim();
+  if(wh && !/^https:\/\/(discord|discordapp)\.com\/api\/webhooks\//.test(wh)){
+    alert("That doesn't look like a Discord webhook URL. It should start with https://discord.com/api/webhooks/");
+    return;
+  }
+  hostWebhook=wh; try{ window.storage.set('mm_webhook',wh,false); }catch(e){}
+
+  let ru=prompt(
+    "(Optional) Live-results file URL — lets pickers' brackets update as songs get knocked out, CBS-style.\n\n"+
+    "Keep a small text file next to the hosted sheet (e.g. results.txt). After each round, hit '📡 Copy results' and paste the code into it.\n\n"+
+    "Leave blank to skip live updates.",
+    hostResultsUrl||'results.txt');
+  if(ru===null) return;
+  ru=ru.trim();
+  hostResultsUrl=ru; try{ window.storage.set('mm_resultsurl',ru,false); }catch(e){}
+
+  const data={title:state.title,size:state.size,regions:state.regions.slice(),songs:songs.slice(),webhook:wh,resultsUrl:ru};
+  const inject='<script>window.__MM_ENTRY__='+JSON.stringify(data).replace(/</g,'\\u003c')+';<\/script>\n';
+  const idx=SELF_SOURCE.indexOf('<script>');
+  const out = idx>=0 ? SELF_SOURCE.slice(0,idx)+inject+SELF_SOURCE.slice(idx)
+                     : SELF_SOURCE.replace('</body>',inject+'</body>');
+  download(out, slug(state.title)+'-ENTRY-SHEET.html', 'text/html');
+  flashSaved('📋 Entry sheet ready');
+}
+
+/* ---- participant (entry mode): submit picks ---- */
+let entrantName="";
+let sent=false;
+let SUBMIT_LABEL='📨 Send my entry';
+function entryComplete(){ return !!(state.rounds[colsFor(state.size)-1][0]); }
+function updateEntryState(){
+  if(!ENTRY) return;
+  const ready=entryComplete() && !!entrantName.trim();
+  const btn=document.getElementById('submitBtn'), st=document.getElementById('entryStatus');
+  if(btn){
+    if(sent){ btn.disabled=true; btn.textContent='✓ Entry sent'; }
+    else { btn.disabled=!ready; btn.textContent=SUBMIT_LABEL; }
+  }
+  if(st){
+    if(sent) st.textContent='Submitted — change a pick to re-send';
+    else if(!entrantName.trim()) st.textContent='Enter your name to submit';
+    else if(!entryComplete()) st.textContent='Pick every matchup down to the champion';
+    else st.textContent='✓ Ready to submit';
+    st.style.color = (ready||sent) ? 'var(--cyan)' : 'var(--muted)';
+  }
+}
+function entrySummary(){
+  const cols=colsFor(state.size);
+  const champ=state.rounds[cols-1][0]||'—';
+  const fin=state.rounds[cols-2]||[];
+  const lines=[];
+  lines.push('🎧 '+(state.title||'Music Madness')+' — Entry by '+(entrantName.trim()||'???'));
+  lines.push('🏆 Champion: '+champ);
+  lines.push('🥇 Final: '+(fin[0]||'—')+'  vs  '+(fin[1]||'—'));
+  if(state.size>=64){
+    const ff=state.rounds[cols-3]||[];
+    lines.push('Final Four: '+[0,1,2,3].map((k,n)=> (state.regions[n]? state.regions[n]+': ':'')+(ff[k]||'—')).join('  ·  '));
+  }
+  lines.push('code:'+encodePicks(state.rounds));
+  return lines.join('\n');
+}
+function showFallback(on){
+  const f=document.getElementById('fallback');
+  if(f) f.style.display=on?'inline-flex':'none';
+}
+async function sendEntry(){
+  const url=(window.__MM_ENTRY__||{}).webhook;
+  if(!url){ copyPicks(); return; }
+  const btn=document.getElementById('submitBtn');
+  btn.disabled=true; btn.textContent='Sending…';
+  try{
+    const fd=new FormData();
+    fd.append('payload_json', JSON.stringify({content:entrySummary(), username:(state.title||'Music Madness')+' · Entries'}));
+    const res=await fetch(url,{method:'POST',body:fd});
+    if(!res.ok) throw new Error('http '+res.status);
+    sent=true; updateEntryState(); showFallback(false);
+    flashSaved('✓ Entry sent to Discord');
+  }catch(e){
+    sent=false; updateEntryState();
+    showFallback(true);
+    flashSaved("Couldn't reach Discord — use Copy instead");
+  }
+}
+function copyPicks(){
+  const text=entrySummary();
+  const done=()=>flashSaved('✓ Copied — paste it in #bracket-challenge');
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>prompt('Copy your entry:',text)); }
+  else prompt('Copy your entry:',text);
+}
+
+/* ---- tournament logic ---- */
+function clearDownstream(col,idx,removed){
+  if(!removed) return;
+  let c=col,k=idx,cols=colsFor(state.size);
+  while(c<cols-1){
+    const nc=c+1,nk=Math.floor(k/2);
+    if(state.rounds[nc]&&state.rounds[nc][nk]===removed){ state.rounds[nc][nk]=""; c=nc; k=nk; } else break;
+  }
+}
+function pick(col,i){
+  if(ENTRY) sent=false;
+  const name=state.rounds[col][i];
+  if(!name) return;
+  const nc=col+1,j=Math.floor(i/2);
+  const old=state.rounds[nc][j];
+  if(old===name) return;
+  state.rounds[nc][j]=name;
+  if(old) clearDownstream(nc,j,old);
+  debouncedSave(); render();
+}
+function shuffle(){
+  const a=state.rounds[0];
+  for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
+  for(let c=1;c<state.rounds.length;c++) state.rounds[c].fill("");
+  debouncedSave(); render();
+}
+function resetPicks(){ for(let c=1;c<state.rounds.length;c++) state.rounds[c].fill(""); debouncedSave(); render(); }
+function clearAll(){ if(!confirm("Erase all song names and picks? (Region names stay.)")) return; state.rounds=[]; normalize(); state.title=""; $title.value=""; debouncedSave(); render(); }
+function changeSize(n){
+  const hasData=state.rounds[0].some(x=>x);
+  if(hasData&&!confirm("Changing the field rebuilds the bracket and clears it. Continue?")){ $size.value=String(state.size); return; }
+  state.size=n; state.rounds=[]; normalize(); debouncedSave(); render();
+}
+
+/* ---- rendering ---- */
+function render(){
+  normalize();
+  ENTRY_ACTUAL = (ENTRY && actualRounds) ? actualRounds : null;
+  ENTRY_ELIM = ENTRY_ACTUAL ? computeElim(ENTRY_ACTUAL) : null;
+  $size.value=String(state.size);
+  $bracket.className='bracket'+(state.size>=64?' compact':'')+(state.size<32?' no-head':'');
+  $bracket.innerHTML='';
+  const cols=colsFor(state.size);
+  const lastPre=cols-3, finalRound=cols-2, champRound=cols-1;
+
+  const columns=[];
+  for(let c=0;c<=lastPre;c++) columns.push({kind:'half',round:c,side:'left'});
+  columns.push({kind:'finalist',round:finalRound,slot:0,side:'left'});
+  columns.push({kind:'champion',round:champRound});
+  columns.push({kind:'finalist',round:finalRound,slot:1,side:'right'});
+  for(let c=lastPre;c>=0;c--) columns.push({kind:'half',round:c,side:'right'});
+
+  columns.forEach(spec=>$bracket.appendChild(renderColumn(spec,cols)));
+  if(ENTRY){ updateEntryState(); updateTrackingPanel(); }
+}
+
+function el(tag,cls){ const e=document.createElement(tag); if(cls) e.className=cls; return e; }
+
+function regionHead(genreIdx){
+  const head=el('div','region-head');
+  if(genreIdx!==null && genreIdx!==undefined){
+    if(ENTRY){
+      const lab=el('div','genre-label');
+      lab.textContent=state.regions[genreIdx]||('Region '+(genreIdx+1));
+      head.appendChild(lab);
+    }else{
+      const inp=el('input','genre-input');
+      inp.value=state.regions[genreIdx]||'';
+      inp.placeholder='Region';
+      inp.maxLength=16;
+      inp.addEventListener('input',e=>{ state.regions[genreIdx]=e.target.value; debouncedSave(); });
+      head.appendChild(inp);
+    }
+  }
+  return head;
+}
+
+function matchBox(round,i,side,cols){
+  const box=el('div','match');
+  if(round>=1) box.classList.add(side==='left'?'conn-l':'conn-r');
+  box.appendChild(slotEl(round,i,cols));
+  box.appendChild(slotEl(round,i+1,cols));
+  return box;
+}
+
+function renderColumn(spec,cols){
+  const round=el('div','round');
+  const lab=el('div','round-label');
+  let text;
+  if(spec.kind==='champion'){ text='Champion'; round.classList.add('champ-col'); }
+  else if(spec.kind==='finalist'){ text=state.size>=64?'Championship':'Final'; round.classList.add('final-col'); }
+  else { text=labelForFull(slotsInCol(state.size,spec.round)); }
+  lab.innerHTML='<span class="dot"></span>'+text;
+  round.appendChild(lab);
+
+  const matches=el('div','matches');
+  const HEAD=state.size>=32;
+
+  if(spec.kind==='champion'){
+    if(HEAD) matches.appendChild(regionHead(null));
+    const box=el('div','match conn-mid'); box.appendChild(champSlot()); matches.appendChild(box);
+  }
+  else if(spec.kind==='finalist'){
+    if(HEAD) matches.appendChild(regionHead(null));
+    const box=el('div','match single '+(spec.side==='left'?'conn-l':'conn-r'));
+    box.appendChild(slotEl(spec.round,spec.slot,cols));
+    matches.appendChild(box);
+  }
+  else { // half column
+    const S=slotsInCol(state.size,spec.round);
+    const start=spec.side==='left'?0:S/2, end=spec.side==='left'?S/2:S;
+    const split=state.size>=64 && spec.round<MERGE_ROUND;
+
+    if(split){
+      matches.classList.add('region-split');
+      const half=(end-start)/2;
+      for(let gi=0;gi<2;gi++){
+        const gStart=start+gi*half, gEnd=gStart+half;
+        const regIdx=spec.side==='left'?gi:2+gi;
+        const group=el('div','region-group region-zone');
+        group.style.setProperty('--accent',REGION_COLORS[regIdx]);
+        group.appendChild(regionHead(spec.round===0?regIdx:null));
+        const body=el('div','region-body');
+        for(let i=gStart;i<gEnd;i+=2) body.appendChild(matchBox(spec.round,i,spec.side,cols));
+        group.appendChild(body);
+        matches.appendChild(group);
+      }
+    }else{
+      let zoneRegion=null,genreIdx=null;
+      if(state.size===32){ zoneRegion=spec.side==='left'?0:1; if(spec.round===0) genreIdx=zoneRegion; }
+      if(zoneRegion!==null){ matches.classList.add('region-zone'); matches.style.setProperty('--accent',REGION_COLORS[zoneRegion]); }
+      if(HEAD) matches.appendChild(regionHead(genreIdx));
+      for(let i=start;i<end;i+=2) matches.appendChild(matchBox(spec.round,i,spec.side,cols));
+    }
+  }
+  round.appendChild(matches);
+  return round;
+}
+
+function slotEl(c,i,cols){
+  const slot=el('div','slot');
+  const name=state.rounds[c][i]||"";
+  const j=Math.floor(i/2);
+  const nextWinner=state.rounds[c+1]?state.rounds[c+1][j]:"";
+  const decided=!!nextWinner;
+  const isWinner=decided&&nextWinner===name&&name!=="";
+
+  if(ENTRY_ACTUAL){
+    // live tracking vs real results
+    if(name){
+      if(c===0){ if(ENTRY_ELIM.has(name)) slot.classList.add('trk-out'); }
+      else {
+        const act=ENTRY_ACTUAL[c]?ENTRY_ACTUAL[c][i]:'';
+        if(act && act===name) slot.classList.add('trk-hit');
+        else if((act && act!==name) || ENTRY_ELIM.has(name)) slot.classList.add('trk-bust');
+      }
+    }
+  } else {
+    if(isWinner) slot.classList.add('winner');
+    else if(decided&&name) slot.classList.add('loser');
+  }
+
+  const seed=el('div','seed');
+  seed.textContent = c===0 ? SEED_ORDER[i%16] : '';
+  slot.appendChild(seed);
+
+  if(c===0 && !ENTRY){
+    const inp=el('input');
+    inp.value=name; inp.placeholder='Add a song…';
+    inp.addEventListener('input',e=>{ state.rounds[0][i]=e.target.value; debouncedSave(); });
+    inp.addEventListener('change',e=>{
+      const oldName=name,v=e.target.value;
+      state.rounds[0][i]=v;
+      if(oldName&&oldName!==v) clearDownstream(0,i,oldName);
+      debouncedSave(); render();
+    });
+    inp.addEventListener('keydown',e=>{ if(e.key==='Enter') e.target.blur(); });
+    slot.appendChild(inp);
+  }else{
+    const nm=el('div','name'+(name?'':' empty'));
+    nm.textContent=name||'—'; slot.appendChild(nm);
+  }
+
+  const btn=el('button','pick');
+  btn.title='Advance this song';
+  btn.textContent=isWinner?'✓':'▶';
+  btn.disabled=!name;
+  btn.addEventListener('click',()=>pick(c,i));
+  slot.appendChild(btn);
+  return slot;
+}
+
+function champSlot(){
+  const cols=colsFor(state.size);
+  const name=state.rounds[cols-1][0]||"";
+  const slot=el('div','slot champ-slot'+(name?' filled':''));
+  const crown=el('div','crown'); crown.textContent=name?'🏆':'🎵';
+  const tag=el('div','tag'); tag.textContent=name?'Winner':'Awaiting champion';
+  const nm=el('div','name'+(name?'':' empty')); nm.textContent=name||'TBD';
+  slot.appendChild(crown); slot.appendChild(tag); slot.appendChild(nm);
+  return slot;
+}
+
+/* ---- wire up ---- */
+$title.addEventListener('input',e=>{ state.title=e.target.value; debouncedSave(); });
+$size.addEventListener('change',e=>changeSize(parseInt(e.target.value,10)));
+document.getElementById('shuffle').addEventListener('click',shuffle);
+document.getElementById('resetPicks').addEventListener('click',resetPicks);
+document.getElementById('clearAll').addEventListener('click',clearAll);
+document.getElementById('imgBtn').addEventListener('click',exportImage);
+document.getElementById('exportBtn').addEventListener('click',exportBracket);
+document.getElementById('entryBtn').addEventListener('click',generateEntrySheet);
+document.getElementById('resultsBtn').addEventListener('click',copyResults);
+const $importFile=document.getElementById('importFile');
+document.getElementById('importBtn').addEventListener('click',()=>$importFile.click());
+$importFile.addEventListener('change',e=>{ if(e.target.files&&e.target.files[0]) importBracket(e.target.files[0]); e.target.value=''; });
+
+function buildEntryUI(){
+  const d=window.__MM_ENTRY__||{};
+  state.title=d.title||"";
+  state.size=SIZES.includes(d.size)?d.size:64;
+  state.regions=Array.isArray(d.regions)?d.regions.slice():DEFAULT_REGIONS.slice();
+  normalize();
+  const songs=Array.isArray(d.songs)?d.songs:[];
+  for(let i=0;i<state.rounds[0].length;i++) state.rounds[0][i]=songs[i]||"";
+
+  const hasWebhook=!!(d.webhook);
+  SUBMIT_LABEL = hasWebhook ? '📨 Send my entry' : '📋 Copy my picks to submit';
+
+  document.querySelector('.kicker').textContent="The Doktor's Lab · Bracket Challenge Entry";
+  $title.value=state.title||'Music Madness Tournament';
+  $title.readOnly=true;
+
+  const controls=document.querySelector('.controls');
+  controls.innerHTML=
+    '<div class="seg"><label for="entrant">Your name</label>'+
+    '<input id="entrant" maxlength="24" placeholder="handle" style="border:none;background:transparent;padding:5px 4px;color:var(--text);font-weight:600;outline:none;min-width:120px"></div>'+
+    '<button id="submitBtn" disabled>'+SUBMIT_LABEL+'</button>'+
+    '<button id="fallback" class="ghost" style="display:none">📋 Copy instead</button>'+
+    '<span id="entryStatus" style="font:600 11px/1 ui-monospace,monospace;letter-spacing:.06em;color:var(--muted);margin-left:2px"></span>';
+
+  const foot=document.querySelector('footer');
+  foot.querySelectorAll('.hint').forEach(h=>h.remove());
+  const h1=el('div','hint'); h1.innerHTML='Tap <kbd>▶</kbd> to pick who wins each matchup, all the way to the champion.';
+  const h2=el('div','hint');
+  h2.innerHTML = hasWebhook
+    ? 'Then type your name and hit <kbd>Send my entry</kbd> — it posts straight to the <kbd>#bracket-challenge</kbd> channel.'
+    : 'Then <kbd>Copy my picks to submit</kbd> and paste the whole message in the Discord <kbd>#bracket-challenge</kbd> channel.';
+  foot.insertBefore(h2,foot.firstChild); foot.insertBefore(h1,foot.firstChild);
+
+  const ent=document.getElementById('entrant');
+  ent.addEventListener('input',e=>{ entrantName=e.target.value; sent=false; updateEntryState(); });
+  document.getElementById('submitBtn').addEventListener('click', hasWebhook?sendEntry:copyPicks);
+  document.getElementById('fallback').addEventListener('click',copyPicks);
+
+  if(d.resultsUrl){
+    const panel=el('div','track-panel');
+    panel.innerHTML='<span class="trk-dot"></span><span id="trkScore">Waiting for the first results…</span>'+
+      '<button id="trkRefresh" class="ghost">↻ Refresh</button><span id="trkStatus"></span>';
+    document.querySelector('header').insertAdjacentElement('afterend',panel);
+    document.getElementById('trkRefresh').addEventListener('click',pollResults);
+    pollResults();
+    pollTimer=setInterval(pollResults,60000);
+  }
+}
+
+(async function init(){
+  if(ENTRY){
+    buildEntryUI();
+    render();
+    return;
+  }
+  await load(); normalize();
+  try{ const w=await window.storage.get('mm_webhook',false); if(w&&w.value) hostWebhook=w.value; }catch(e){}
+  try{ const r=await window.storage.get('mm_resultsurl',false); if(r&&r.value) hostResultsUrl=r.value; }catch(e){}
+  const blank=state.regions.every(r=>!String(r).trim());
+  const isPrior=PRIOR_DEFAULTS.some(set=>set.every((v,k)=>String(state.regions[k]||'').trim().toLowerCase()===v.toLowerCase()));
+  if(blank||isPrior) state.regions=DEFAULT_REGIONS.slice();
+  $title.value=state.title||"";
+  render();
+})();
+</script></body></html>
