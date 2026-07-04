@@ -1,11 +1,1 @@
-& {
-  $WorkDir = "$env:USERPROFILE\MusicMadnessSite"
-  $code = (Get-Clipboard -Raw).Trim()
-  if(-not $code){ Write-Host "Click 'Copy results' in the bracket first." -ForegroundColor Red; return }
-  Set-Location $WorkDir
-  Set-Content -Path "results.txt" -Value $code -NoNewline
-  git add results.txt | Out-Null
-  git commit -m "results $(Get-Date -Format s)" 2>$null | Out-Null
-  git push
-  Write-Host "Pushed. Brackets refresh within ~1 minute." -ForegroundColor Green
-}
+results:r+4AAAAAAAAAAAAAAAAAAA==
