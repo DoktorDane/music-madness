@@ -339,6 +339,18 @@ function encodePicks(rounds){
   for(let i=0;i<bits.length;i+=8){ let by=0; for(let k=0;k<8;k++) if(bits[i+k]) by|=(1<<(7-k)); bytes+=String.fromCharCode(by); }
   return btoa(bytes);
 }
+function decodePicks(token, field){
+  let bytes; try{ bytes=atob(token); }catch(e){ return null; }
+  const bits=[]; for(let i=0;i<bytes.length;i++){ const c=bytes.charCodeAt(i); for(let k=7;k>=0;k--) bits.push((c>>k)&1); }
+  const size=field.length, cols=colsFor(size), rounds=[field.slice()];
+  let bi=0;
+  for(let r=1;r<cols;r++){
+    const len=size/(2**r), row=[];
+    for(let j=0;j<len;j++){ const a=rounds[r-1][2*j],b=rounds[r-1][2*j+1]; row.push((bits[bi++]||0)?b:a); }
+    rounds.push(row);
+  }
+  return rounds;
+}
 
 /* ---- live results feed: 2 bits per game (decided? + which side) ---- */
 let hostResultsUrl="";
@@ -390,11 +402,11 @@ async function pollResults(){
     const res=await fetch(u,{cache:'no-store'});
     if(!res.ok) throw 0;
     const txt=await res.text();
-    const mm=txt.match(/results:\s*([A-Za-z0-9+/=_-]+)/) || txt.match(/([A-Za-z0-9+/=_-]{4,})/);
-    const token=mm?(mm[1]||mm[0]):'';
-    const dec=token?decodeResults(token, state.rounds[0]):null;
+    const mm=txt.match(/results:\s*([A-Za-z0-9+/=_-]+)/);
+    const token=mm?mm[1]:'';
+    const dec=(token && token.length>=8)?decodeResults(token, state.rounds[0]):null;
     if(dec){ actualRounds=dec; lastUpdated=new Date(); render(); }
-    else trackStatus('No results yet');
+    else { actualRounds=null; lastUpdated=new Date(); render(); trackStatus('No results yet'); }
   }catch(e){ trackStatus("Couldn't load results"); }
 }
 function trackStatus(msg){ const st=document.getElementById('trkStatus'); if(st) st.textContent=msg; }
@@ -472,18 +484,20 @@ function generateEntrySheet(){
 /* ---- participant (entry mode): submit picks ---- */
 let entrantName="";
 let sent=false;
+let LS_KEY="";
 let SUBMIT_LABEL='📨 Send my entry';
 function entryComplete(){ return !!(state.rounds[colsFor(state.size)-1][0]); }
 function updateEntryState(){
   if(!ENTRY) return;
   const ready=entryComplete() && !!entrantName.trim();
-  const btn=document.getElementById('submitBtn'), st=document.getElementById('entryStatus');
+  const btn=document.getElementById('submitBtn'), st=document.getElementById('entryStatus'), ent=document.getElementById('entrant');
   if(btn){
-    if(sent){ btn.disabled=true; btn.textContent='✓ Entry sent'; }
+    if(sent){ btn.disabled=true; btn.textContent='✓ Entry submitted'; }
     else { btn.disabled=!ready; btn.textContent=SUBMIT_LABEL; }
   }
+  if(ent) ent.disabled=sent;
   if(st){
-    if(sent) st.textContent='Submitted — change a pick to re-send';
+    if(sent) st.textContent='🔒 Locked in — good luck!';
     else if(!entrantName.trim()) st.textContent='Enter your name to submit';
     else if(!entryComplete()) st.textContent='Pick every matchup down to the champion';
     else st.textContent='✓ Ready to submit';
@@ -491,17 +505,9 @@ function updateEntryState(){
   }
 }
 function entrySummary(){
-  const cols=colsFor(state.size);
-  const champ=state.rounds[cols-1][0]||'—';
-  const fin=state.rounds[cols-2]||[];
+  const name=entrantName.trim()||'???';
   const lines=[];
-  lines.push('🎧 '+(state.title||'Music Madness')+' — Entry by '+(entrantName.trim()||'???'));
-  lines.push('🏆 Champion: '+champ);
-  lines.push('🥇 Final: '+(fin[0]||'—')+'  vs  '+(fin[1]||'—'));
-  if(state.size>=64){
-    const ff=state.rounds[cols-3]||[];
-    lines.push('Final Four: '+[0,1,2,3].map((k,n)=> (state.regions[n]? state.regions[n]+': ':'')+(ff[k]||'—')).join('  ·  '));
-  }
+  lines.push('🎧 '+(state.title||'Music Madness')+' — bracket entry by '+name+' is locked in and accepted ✅');
   lines.push('code:'+encodePicks(state.rounds));
   return lines.join('\n');
 }
@@ -519,8 +525,8 @@ async function sendEntry(){
     fd.append('payload_json', JSON.stringify({content:entrySummary(), username:(state.title||'Music Madness')+' · Entries'}));
     const res=await fetch(url,{method:'POST',body:fd});
     if(!res.ok) throw new Error('http '+res.status);
-    sent=true; updateEntryState(); showFallback(false);
-    flashSaved('✓ Entry sent to Discord');
+    sent=true; lockEntry(); render(); updateEntryState(); showFallback(false);
+    flashSaved('✓ Entry submitted — locked in');
   }catch(e){
     sent=false; updateEntryState();
     showFallback(true);
@@ -533,6 +539,9 @@ function copyPicks(){
   if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done).catch(()=>prompt('Copy your entry:',text)); }
   else prompt('Copy your entry:',text);
 }
+function lockEntry(){
+  try{ if(window.localStorage && LS_KEY) localStorage.setItem(LS_KEY, JSON.stringify({name:entrantName.trim(), code:encodePicks(state.rounds), ts:Date.now()})); }catch(e){}
+}
 
 /* ---- tournament logic ---- */
 function clearDownstream(col,idx,removed){
@@ -544,7 +553,7 @@ function clearDownstream(col,idx,removed){
   }
 }
 function pick(col,i){
-  if(ENTRY) sent=false;
+  if(ENTRY && sent) return;   // locked after submit — no changes
   const name=state.rounds[col][i];
   if(!name) return;
   const nc=col+1,j=Math.floor(i/2);
@@ -720,7 +729,7 @@ function slotEl(c,i,cols){
   const btn=el('button','pick');
   btn.title='Advance this song';
   btn.textContent=isWinner?'✓':'▶';
-  btn.disabled=!name;
+  btn.disabled = !name || (ENTRY && sent);
   btn.addEventListener('click',()=>pick(c,i));
   slot.appendChild(btn);
   return slot;
@@ -760,6 +769,18 @@ function buildEntryUI(){
   const songs=Array.isArray(d.songs)?d.songs:[];
   for(let i=0;i<state.rounds[0].length;i++) state.rounds[0][i]=songs[i]||"";
 
+  // if this browser already submitted this bracket, restore it locked
+  LS_KEY='mmEntry:'+(d.title||'mm')+':'+d.size;
+  try{
+    if(window.localStorage){
+      const raw=localStorage.getItem(LS_KEY);
+      if(raw){ const prior=JSON.parse(raw);
+        if(prior && prior.code){ const dec=decodePicks(prior.code, state.rounds[0].slice()); if(dec) state.rounds=dec; }
+        entrantName=prior && prior.name ? prior.name : ''; sent=true;
+      }
+    }
+  }catch(e){}
+
   const hasWebhook=!!(d.webhook);
   SUBMIT_LABEL = hasWebhook ? '📨 Send my entry' : '📋 Copy my picks to submit';
 
@@ -780,12 +801,13 @@ function buildEntryUI(){
   const h1=el('div','hint'); h1.innerHTML='Tap <kbd>▶</kbd> to pick who wins each matchup, all the way to the champion.';
   const h2=el('div','hint');
   h2.innerHTML = hasWebhook
-    ? 'Then type your name and hit <kbd>Send my entry</kbd> — it posts straight to the <kbd>#bracket-challenge</kbd> channel.'
+    ? 'Then type your name and hit <kbd>Send my entry</kbd> — one submission, and it locks in.'
     : 'Then <kbd>Copy my picks to submit</kbd> and paste the whole message in the Discord <kbd>#bracket-challenge</kbd> channel.';
   foot.insertBefore(h2,foot.firstChild); foot.insertBefore(h1,foot.firstChild);
 
   const ent=document.getElementById('entrant');
-  ent.addEventListener('input',e=>{ entrantName=e.target.value; sent=false; updateEntryState(); });
+  ent.value=entrantName||'';
+  ent.addEventListener('input',e=>{ entrantName=e.target.value; updateEntryState(); });
   document.getElementById('submitBtn').addEventListener('click', hasWebhook?sendEntry:copyPicks);
   document.getElementById('fallback').addEventListener('click',copyPicks);
 
